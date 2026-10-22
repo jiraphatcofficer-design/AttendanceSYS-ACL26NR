@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ICE-TH Attendance System</title>
+    <link rel="icon" type="image/png" href="ICE-ICON.png">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+    <div class="logo-area">
+        <a onclick="showPage('home')" style="cursor:pointer;">
+            <img src="ICE-Logo.png" alt="ICE Logo" class="logo-img">
+        </a>
+        <div class="logo-text">ACL 2026 National Round - Registration System</div>
+    </div>
+    
+    <div class="menu-toggle" id="mobile-menu" onclick="toggleMenu()">
+        <span></span>
+        <span></span>
+        <span></span>
+    </div>
+
+    <nav>
+        <ul id="nav-list">
+            <li><a id="nav-home" onclick="showPage('home')" class="active">หน้าแรก</a></li>
+            <li><a id="nav-realtime" onclick="showPage('realtime')">เช็ครายชื่อเเบบเรียลไทม์</a></li>
+            <li><a id="nav-note" onclick="showPage('note')">โน้ต</a></li>
+            <li><a href="#" onclick="systemReset()">รีเซ็ตระบบ</a></li>
+        </ul>
+    </nav>
+</header>
+
+<main id="home-page">
+    <div class="setup-section">
+        <h3>1. นำเข้าข้อมูลผู้เข้าสอบ (Excel)</h3>
+        <p>อัปโหลดไฟล์ที่มีคอลัมน์: Order, Seat No, Exam Venue, Floor, Room, Name Surname, Grade, Subject, School Name, REF</p>
+        <input type="file" id="excel-upload" accept=".xlsx, .xls">
+        <button id="download-btn" class="btn-download" onclick="exportToExcel()">ดาวน์โหลดไฟล์สรุปการเช็คชื่อ (Excel)</button>
+    </div>
+
+    <div class="scanner-container">
+        <div>
+            <div class="scanner-header">
+                <h3 id="status-text" style="margin: 0;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2. สแกน QR Code</h3>
+                <div class="search-group">
+                    <input type="text" id="id-input" class="search-input" placeholder="สแกนหรือกรอกรหัส REF..." onkeydown="handleScanner(event)" autocomplete="off">
+                    <button class="btn-search" onclick="manualSearch()">ค้นหา</button>
+                </div>
+            </div>
+            <div class="header-line-navy"></div>
+            
+            <div style="text-align: center; margin-top:42px;">
+                <img src="ACL-Logo.png" alt="ACL Logo" style="max-width: 360px; width: 100%;">
+            </div>
+        </div>
+
+        <div id="result-area">
+            <h3 style="margin-top: 0;">ข้อมูลผู้เข้าสอบ</h3>
+            <div id="card" class="result-card">
+                <div class="card-header">
+                    <span style="font-weight: bold;">ORDER :</span>
+                    <span id="display-id">-</span>
+                </div>
+                
+                <div class="info-grid">
+                    <div class="label">ชื่อ-นามสกุล:</div>
+                    <div class="value" id="display-name">-</div>
+                    <div class="label">โรงเรียน:</div>
+                    <div class="value" id="display-school">-</div>
+                    <div class="label">ระดับชั้น/วิชา:</div>
+                    <div class="value"><span id="display-grade">-</span> / <span id="display-subject">-</span></div>
+                    <div class="label">สนามสอบ/ห้อง:</div>
+                    <div class="value"><span id="display-examvenue">-</span> / <span id="display-room">-</span> (ชั้น <span id="display-floor">-</span>)</div>
+                    <div class="label">เลขที่นั่งสอบ:</div>
+                    <div class="value" id="display-seat">-</div>
+                </div>
+
+                <div class="status-badge">✓ เช็คชื่อสำเร็จ</div>
+                <br>
+                <button class="btn-clear" onclick="clearResult()">สแกนคนต่อไป</button>
+            </div>
+            <div id="placeholder-text" style="text-align: center; padding: 40px; color: #999; border: 2px dashed #ccc; border-radius: 10px;">
+                รอการสแกนหรือระบุ REF...
+            </div>
+        </div>
+    </div>
+</main>
+
+<main id="realtime-page" style="display: none;">
+    <div class="table-container">
+        <div class="realtime-header">
+            <h3 style="margin:0;">3. สถานะรายชื่อผู้ลงทะเบียนเเบบเรียลไทม์</h3>
+            <div class="search-group">
+                <input type="text" id="realtime-search" class="search-input" placeholder="ค้นหาข้อมูลทุกคอลัมน์..." onkeyup="updateRealtimeTable()">
+            </div>
+        </div>
+
+        <table id="realtime-table">
+            <thead>
+                <tr>
+                    <th>No.</th>
+                    <th>Order</th>
+                    <th>Name Surname</th>
+                    <th>School Name</th>
+                    <th>Grade/Subject</th>
+                    <th>Registration On</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="table-body"></tbody>
+        </table>
+
+        <div class="summary-container" id="realtime-summary">
+            <div class="summary-item">
+                <div class="summary-label">จำนวนผู้สมัครทั้งหมด</div>
+                <div class="summary-value" id="stat-total">0</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-label">ลงทะเบียนสำเร็จทั้งสิ้น</div>
+                <div class="summary-value success" id="stat-present">0</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-label">ยังไม่ได้ลงทะเบียนทั้งสิ้น</div>
+                <div class="summary-value danger" id="stat-absent">0</div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<main id="note-page" style="display: none;">
+    <div class="note-container">
+        <h3 style="margin-top:0;">สมุดโน้ตบันทึกข้อมูล</h3>
+        <p style="color: #666;">พิมพ์บันทึกข้อมูลของคุณที่นี่ ระบบจะบันทึกข้อมูลให้อัตโนมัติ</p>
+        <textarea id="note-input" class="note-textarea" placeholder="เขียนข้อมูลที่คุณต้องการจดจำที่นี่..." oninput="saveNote()"></textarea>
+        <span class="save-status" id="note-status">บันทึกข้อมูลแล้ว</span>
+    </div>
+</main>
+
+<footer>
+    <p>Copyright © 2026 ICE-TH | International Champions In Education. All Rights Reserved.&nbsp;&nbsp;Version: V1.1.18</p>
+</footer>
+
+<script src="script.js"></script>
+
+</body>
+</html>
